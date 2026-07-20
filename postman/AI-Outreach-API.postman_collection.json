@@ -1,0 +1,561 @@
+{
+  "info": {
+    "_postman_id": "ai-outreach-api-collection",
+    "name": "AI Outreach API",
+    "description": "Postman collection for testing the AI Outreach SaaS backend.\n\n**Setup**\n1. Import this collection\n2. Import `AI-Outreach-Local.postman_environment.json` (optional)\n3. Run **Auth → Register** or **Login** first — token is saved automatically\n4. Run **Profile → Update Profile** before **Generate**\n5. For company analysis, ensure Redis is running (`docker compose up -d`)\n\nBase URL: `http://localhost:3000/api/v1`\nSwagger: `http://localhost:3000/api/docs`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000/api/v1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "jobId", "value": "" },
+    { "key": "companyId", "value": "" },
+    { "key": "hookId", "value": "" },
+    { "key": "templateId", "value": "" },
+    { "key": "generationId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check (DB)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          }
+        },
+        {
+          "name": "Redis Status",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health/redis"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) {",
+                  "    pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "    pm.test('Token saved', () => pm.expect(json.accessToken).to.be.a('string'));",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Vijay Kumar\",\n  \"email\": \"vijay@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) {",
+                  "    pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "    pm.test('Token saved', () => pm.expect(json.accessToken).to.be.a('string'));",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"vijay@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me"
+          }
+        },
+        {
+          "name": "Update Me",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Vijay Kumar Rathod\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/me"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/profile"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"AI Full Stack Developer\",\n  \"company\": \"VR Solutions\",\n  \"services\": [\n    \"Web Development\",\n    \"AI Automation\",\n    \"React Development\",\n    \"Cold Email Automation\"\n  ],\n  \"portfolioUrl\": \"https://portfolio.example.com\",\n  \"targetCustomers\": \"US Startups\",\n  \"valueProposition\": \"I help startups build AI-powered web applications faster.\",\n  \"tone\": \"Professional\"\n}"
+            },
+            "url": "{{baseUrl}}/profile"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Company",
+      "item": [
+        {
+          "name": "Analyze Company",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.jobId) pm.collectionVariables.set('jobId', json.jobId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://vercel.com\"\n}"
+            },
+            "url": "{{baseUrl}}/company/analyze"
+          }
+        },
+        {
+          "name": "Get Analysis Job",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.companyId) pm.collectionVariables.set('companyId', json.companyId);",
+                  "  if (json.company && json.company.id) {",
+                  "    pm.collectionVariables.set('companyId', json.company.id);",
+                  "    if (json.company.hooks && json.company.hooks.length > 0) {",
+                  "      pm.collectionVariables.set('hookId', json.company.hooks[0].id);",
+                  "    }",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/company/jobs/{{jobId}}"
+          }
+        },
+        {
+          "name": "Get Company",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/company/{{companyId}}"
+          }
+        },
+        {
+          "name": "Get Company Hooks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const hooks = pm.response.json();",
+                  "  if (Array.isArray(hooks) && hooks.length > 0) {",
+                  "    pm.collectionVariables.set('hookId', hooks[0].id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/company/{{companyId}}/hooks"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Generate",
+      "item": [
+        {
+          "name": "Generate Outreach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('generationId', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyId\": \"{{companyId}}\",\n  \"hookId\": \"{{hookId}}\",\n  \"tone\": \"Professional\"\n}"
+            },
+            "url": "{{baseUrl}}/generate"
+          }
+        }
+      ]
+    },
+    {
+      "name": "History",
+      "item": [
+        {
+          "name": "List History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.items && json.items.length > 0) {",
+                  "    pm.collectionVariables.set('generationId', json.items[0].id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/history?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["history"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get History Item",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/history/{{generationId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Templates",
+      "item": [
+        {
+          "name": "List Templates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/templates"
+          }
+        },
+        {
+          "name": "Create Template",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('templateId', json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Startup Template\",\n  \"category\": \"Startup\",\n  \"body\": \"Hi {{name}},\\n\\nI noticed {{company}} is doing great work in {{industry}}. {{hook}}\\n\\n{{valueProposition}}\\n\\nBest,\\nVijay\"\n}"
+            },
+            "url": "{{baseUrl}}/templates"
+          }
+        },
+        {
+          "name": "Update Template",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Updated Template\"\n}"
+            },
+            "url": "{{baseUrl}}/templates/{{templateId}}"
+          }
+        },
+        {
+          "name": "Delete Template",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/templates/{{templateId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Credits",
+      "item": [
+        {
+          "name": "Get Credits",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/credits"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Get Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/analytics/summary"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Integrations",
+      "item": [
+        {
+          "name": "Get Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/integrations/status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Full Flow (run in order)",
+      "item": [
+        {
+          "name": "1. Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', json.accessToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"vijay@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "2. Update Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"AI Full Stack Developer\",\n  \"company\": \"VR Solutions\",\n  \"services\": [\"Web Development\", \"AI Automation\"],\n  \"targetCustomers\": \"US Startups\",\n  \"valueProposition\": \"I help startups build AI-powered web applications faster.\",\n  \"tone\": \"Professional\"\n}"
+            },
+            "url": "{{baseUrl}}/profile"
+          }
+        },
+        {
+          "name": "3. Analyze Company",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('jobId', json.jobId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://vercel.com\"\n}"
+            },
+            "url": "{{baseUrl}}/company/analyze"
+          }
+        },
+        {
+          "name": "4. Poll Job Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.companyId) pm.collectionVariables.set('companyId', json.companyId);",
+                  "if (json.company) {",
+                  "  pm.collectionVariables.set('companyId', json.company.id);",
+                  "  if (json.company.hooks && json.company.hooks[0]) {",
+                  "    pm.collectionVariables.set('hookId', json.company.hooks[0].id);",
+                  "  }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/company/jobs/{{jobId}}"
+          }
+        },
+        {
+          "name": "5. Generate Outreach",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('generationId', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyId\": \"{{companyId}}\",\n  \"hookId\": \"{{hookId}}\",\n  \"tone\": \"Professional\"\n}"
+            },
+            "url": "{{baseUrl}}/generate"
+          }
+        },
+        {
+          "name": "6. View History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/history"
+          }
+        },
+        {
+          "name": "7. Check Credits & Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/credits"
+          }
+        }
+      ]
+    }
+  ]
+}

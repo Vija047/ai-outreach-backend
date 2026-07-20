@@ -1,0 +1,127 @@
+/**
+ * Live API test script for AI Outreach backend.
+ * Usage: node scripts/test-live-flow.mjs
+ */
+const BASE = process.env.API_BASE ?? 'http://localhost:3001/api/v1';
+const TEST_EMAIL = `test-${Date.now()}@outreach.test`;
+const TEST_PASSWORD = 'password123';
+const COMPANY_URL = 'https://talentpluto.com/';
+
+async function request(method, path, body, token) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120000);
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+    return { status: res.status, data };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function log(step, result) {
+  console.log(`\n=== ${step} ===`);
+  console.log(`Status: ${result.status}`);
+  console.log(JSON.stringify(result.data, null, 2));
+}
+
+async function pollJob(token, jobId, maxAttempts = 30) {
+  for (let i = 1; i <= maxAttempts; i++) {
+    const result = await request('GET', `/company/jobs/${jobId}`, null, token);
+    log(`Poll Job (${i}/${maxAttempts})`, result);
+    const status = result.data?.status;
+    if (status === 'DONE' || status === 'FAILED') return result;
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  throw new Error('Job polling timed out');
+}
+
+async function main() {
+  console.log(`Testing API at ${BASE}`);
+  console.log(`Company URL: ${COMPANY_URL}`);
+  console.log(`Test user: ${TEST_EMAIL}`);
+
+  const health = await request('GET', '/health');
+  log('Health', health);
+  if (health.status !== 200) throw new Error('Health check failed');
+
+  const register = await request('POST', '/auth/register', {
+    name: 'Test User',
+    email: TEST_EMAIL,
+    password: TEST_PASSWORD,
+  });
+  log('Register', register);
+  if (!register.data?.accessToken) throw new Error('Register failed');
+
+  const token = register.data.accessToken;
+
+  const profile = await request('PATCH', '/profile', {
+    role: 'AI Full Stack Developer',
+    company: 'VR Solutions',
+    services: ['Web Development', 'AI Automation', 'Cold Email'],
+    targetCustomers: 'US Startups',
+    valueProposition:
+      'I help startups build AI-powered web applications and outreach systems faster.',
+    tone: 'Professional',
+  }, token);
+  log('Update Profile', profile);
+
+  const creditsBefore = await request('GET', '/credits', null, token);
+  log('Credits Before', creditsBefore);
+
+  const analyze = await request('POST', '/company/analyze', {
+    url: COMPANY_URL,
+  }, token);
+  log('Analyze Company', analyze);
+  if (!analyze.data?.jobId) throw new Error('Analyze failed');
+
+  const job = await pollJob(token, analyze.data.jobId);
+  if (job.data?.status === 'FAILED') {
+    throw new Error(`Analysis failed: ${job.data?.error ?? 'unknown'}`);
+  }
+
+  const companyId = job.data?.companyId ?? job.data?.company?.id;
+  const hookId = job.data?.company?.hooks?.[0]?.id;
+
+  if (!companyId) throw new Error('No companyId from job');
+
+  const hooks = await request('GET', `/company/${companyId}/hooks`, null, token);
+  log('Company Hooks', hooks);
+
+  const generate = await request('POST', '/generate', {
+    companyId,
+    hookId: hookId ?? hooks.data?.[0]?.id,
+    tone: 'Professional',
+  }, token);
+  log('Generate Outreach', generate);
+
+  const history = await request('GET', '/history?page=1&limit=5', null, token);
+  log('History', history);
+
+  const analytics = await request('GET', '/analytics/summary', null, token);
+  log('Analytics', analytics);
+
+  const creditsAfter = await request('GET', '/credits', null, token);
+  log('Credits After', creditsAfter);
+
+  console.log('\n✅ Live flow test completed successfully');
+}
+
+main().catch((err) => {
+  console.error('\n❌ Test failed:', err.message);
+  process.exit(1);
+});

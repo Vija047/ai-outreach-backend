@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+enum AnalysisJobStatus {
+  QUEUED
+  RUNNING
+  DONE
+  FAILED
+}
+
+enum AnalysisJobStep {
+  SCRAPING
+  ENRICHING
+  ANALYZING
+  SAVING
+  DISCOVERING_CONTACTS
+}
+
+enum ContactSource {
+  NINJAPEARL
+  ROCKETREACH
+  HUNTER
+  BOTH
+}
+
+enum EmailStatus {
+  valid
+  accept_all
+  risky
+  invalid
+  unknown
+}
+
+enum ReplyOutcome {
+  PENDING
+  YES
+  NO
+}
+
+enum HookSourceType {
+  WEBSITE
+  NEWS
+}
+
+enum CreditReason {
+  SIGNUP_BONUS
+  ANALYZE
+  GENERATE
+  PURCHASE
+  ADMIN_GRANT
+}
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  passwordHash  String?
+  googleId      String?        @unique
+  authProvider  AuthProvider   @default(EMAIL)
+  emailVerified Boolean        @default(false)
+  plan          Plan           @default(FREE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  profile      SellerProfile?
+  creditLedger CreditLedger[]
+  analysisJobs AnalysisJob[]
+  generations  Generation[]
+  templates    Template[]
+}
+
+model SellerProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  role              String?
+  company           String?
+  services          String[] @default([])
+  portfolioUrl      String?
+  targetCustomers   String?
+  valueProposition  String?
+  tone              String?  @default("Professional")
+  phoneCountryCode  String?
+  phoneNumber       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Company {
+  id          String        @id @default(cuid())
+  domain      String        @unique
+  name        String?
+  websiteUrl  String
+  summary     String?
+  industry    String?
+  techStack   String[]      @default([])
+  mission     String?
+  rawMarkdown String?
+  analyzedAt         DateTime  @default(now())
+  linkedinCompanyUrl String?
+  contactsFetchedAt  DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  hooks        CompanyHook[]
+  contacts     CompanyContact[]
+  analysisJobs AnalysisJob[]
+  generations  Generation[]
+}
+
+model CompanyContact {
+  id              String        @id @default(cuid())
+  companyId       String
+  name            String
+  title           String
+  linkedinUrl     String?
+  profilePicUrl   String?
+  email           String?
+  emailConfidence Int?
+  emailStatus     EmailStatus   @default(unknown)
+  source          ContactSource
+  sourceNote      String
+  rankScore       Int           @default(0)
+  createdAt       DateTime      @default(now())
+
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  generations Generation[]
+
+  @@index([companyId])
+}
+
+model CompanyHook {
+  id          String          @id @default(cuid())
+  companyId   String
+  title       String
+  description String
+  confidence  Float           @default(0.5)
+  sourceUrl   String?
+  sourceType  HookSourceType?
+  excerpt     String?
+  createdAt   DateTime        @default(now())
+
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  generations Generation[]
+}
+
+model AnalysisJob {
+  id        String             @id @default(cuid())
+  userId    String
+  url       String
+  domain    String
+  status    AnalysisJobStatus  @default(QUEUED)
+  step      AnalysisJobStep?
+  companyId String?
+  error     String?
+  errorCode String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([domain])
+}
+
+model Generation {
+  id              String         @id @default(cuid())
+  userId          String
+  companyId       String
+  hookId          String?
+  contactId       String?
+  tone            String
+  email           String
+  linkedInDm      String
+  connectionNote  String
+  subjectLines    String[]       @default([])
+  followUp1       String
+  followUp2       String
+  variants        Json?
+  sentAt          DateTime?
+  replyOutcome    ReplyOutcome?
+  repliedAt       DateTime?
+  createdAt       DateTime       @default(now())
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  hook    CompanyHook?    @relation(fields: [hookId], references: [id], onDelete: SetNull)
+  contact CompanyContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([contactId])
+}
+
+model CreditLedger {
+  id        String       @id @default(cuid())
+  userId    String
+  delta     Int
+  reason    CreditReason
+  refType   String?
+  refId     String?
+  createdAt DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Template {
+  id        String   @id @default(cuid())
+  userId    String?
+  name      String
+  category  String
+  body      String
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
