@@ -1,0 +1,89 @@
+# Render Blueprint — AI Outreach API (backend only)
+# Repo: https://github.com/Vija047/ai-outreach-backend
+# Deploy: Render Dashboard → New → Blueprint → select this repo
+#
+# After deploy, set Vercel:
+#   NEXT_PUBLIC_API_URL=https://YOUR-SERVICE.onrender.com/api/v1
+
+services:
+  - type: web
+    name: ai-outreach-api
+    runtime: docker
+    region: oregon
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Core (fill in Render dashboard — sync: false)
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+      # CORS / frontend (Vercel)
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+
+      # Google OAuth (optional)
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        sync: false
+
+      # Gmail SMTP (Nodemailer)
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: OTP_EXPIRY_MINUTES
+        value: "10"
+
+      # AI (OpenRouter)
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: OPENAI_MODEL
+        value: openai/gpt-4o-mini
+      - key: OPENAI_HTTP_REFERER
+        sync: false
+      - key: OPENAI_APP_TITLE
+        value: AI Outreach
+
+      # Optional enrichment / contacts
+      - key: FIRECRAWL_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: ROCKETREACH_API_KEY
+        sync: false
+      - key: HUNTER_API_KEY
+        sync: false
+      - key: CONTACTS_CACHE_DAYS
+        value: "30"
+
+      # Credits
+      - key: SIGNUP_CREDITS
+        value: "20"
+      - key: ANALYZE_CREDIT_COST
+        value: "1"
+      - key: GENERATE_CREDIT_COST
+        value: "1"
