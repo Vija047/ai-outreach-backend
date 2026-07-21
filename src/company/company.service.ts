@@ -1,6 +1,8 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
@@ -73,11 +75,31 @@ export class CompanyService {
     };
   }
 
-  getCompany(id: string) {
+  async assertUserCanAccessCompany(userId: string, companyId: string) {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { id: true },
+    });
+    if (!company) {
+      throw new NotFoundException('Company not found');
+    }
+
+    const access = await this.prisma.analysisJob.findFirst({
+      where: { userId, companyId },
+      select: { id: true },
+    });
+    if (!access) {
+      throw new ForbiddenException('You do not have access to this company');
+    }
+  }
+
+  async getCompany(id: string, userId: string) {
+    await this.assertUserCanAccessCompany(userId, id);
     return this.analysisService.getCompany(id);
   }
 
-  getHooks(companyId: string) {
+  async getHooks(companyId: string, userId: string) {
+    await this.assertUserCanAccessCompany(userId, companyId);
     return this.analysisService.getHooks(companyId);
   }
 

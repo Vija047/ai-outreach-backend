@@ -1,5 +1,6 @@
 import {
   BadGatewayException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -35,6 +36,14 @@ export class GenerateService {
       include: { hooks: true },
     });
     if (!company) throw new NotFoundException('Company not found');
+
+    const companyAccess = await this.prisma.analysisJob.findFirst({
+      where: { userId, companyId: dto.companyId },
+      select: { id: true },
+    });
+    if (!companyAccess) {
+      throw new ForbiddenException('You do not have access to this company');
+    }
 
     let hook: CompanyHook | null = null;
     if (dto.hookId) {

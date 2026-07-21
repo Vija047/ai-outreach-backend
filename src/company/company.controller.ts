@@ -31,22 +31,34 @@ export class CompanyController {
   }
 
   @Get(':id')
-  getCompany(@Param('id') id: string) {
-    return this.companyService.getCompany(id);
+  getCompany(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('id') id: string,
+  ) {
+    return this.companyService.getCompany(id, user.id);
   }
 
   @Get(':id/hooks')
-  getHooks(@Param('id') id: string) {
-    return this.companyService.getHooks(id);
+  getHooks(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('id') id: string,
+  ) {
+    return this.companyService.getHooks(id, user.id);
   }
 
   @Get(':id/contacts')
-  getContacts(@Param('id') id: string) {
-    return this.contactsService.getContacts(id);
+  getContacts(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('id') id: string,
+  ) {
+    return this.contactsService.getContacts(id, user.id);
   }
 
   @Post(':id/contacts/refresh')
-  refreshContacts(@Param('id') id: string) {
-    return this.contactsService.refreshContacts(id);
+  refreshContacts(
+    @CurrentUser() user: AuthUserPayload,
+    @Param('id') id: string,
+  ) {
+    return this.contactsService.refreshContacts(id, user.id);
   }
 }

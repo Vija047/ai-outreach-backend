@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ContactDiscoveryService } from './contact-discovery.service';
 
@@ -9,12 +13,26 @@ export class ContactsService {
     private readonly discovery: ContactDiscoveryService,
   ) {}
 
-  async getContacts(companyId: string) {
+  private async assertUserCanAccessCompany(userId: string, companyId: string) {
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
       select: { id: true, domain: true, contactsFetchedAt: true },
     });
     if (!company) throw new NotFoundException('Company not found');
+
+    const access = await this.prisma.analysisJob.findFirst({
+      where: { userId, companyId },
+      select: { id: true },
+    });
+    if (!access) {
+      throw new ForbiddenException('You do not have access to this company');
+    }
+
+    return company;
+  }
+
+  async getContacts(companyId: string, userId: string) {
+    const company = await this.assertUserCanAccessCompany(userId, companyId);
 
     const contacts = await this.prisma.companyContact.findMany({
       where: { companyId },
@@ -30,12 +48,8 @@ export class ContactsService {
     };
   }
 
-  async refreshContacts(companyId: string) {
-    const company = await this.prisma.company.findUnique({
-      where: { id: companyId },
-      select: { id: true, domain: true },
-    });
-    if (!company) throw new NotFoundException('Company not found');
+  async refreshContacts(companyId: string, userId: string) {
+    const company = await this.assertUserCanAccessCompany(userId, companyId);
 
     const result = await this.discovery.discover(companyId, company.domain);
     const contacts = await this.prisma.companyContact.findMany({

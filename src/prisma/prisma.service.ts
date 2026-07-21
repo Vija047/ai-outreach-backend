@@ -13,9 +13,21 @@ export class PrismaService
 
   constructor(configService: ConfigService) {
     const connectionString =
-      configService.get<string>('DATABASE_URL') ??
-      'postgresql://postgres:postgres@localhost:5432/ai_outreach?schema=public';
-    const pool = new Pool({ connectionString });
+      configService.get<string>('app.databaseUrl') ||
+      configService.get<string>('DATABASE_URL') ||
+      process.env.DATABASE_URL;
+
+    if (!connectionString) {
+      throw new Error('DATABASE_URL is required');
+    }
+
+    const pool = new Pool({
+      connectionString,
+      // Neon / managed Postgres often need SSL; URL usually includes sslmode
+      max: 10,
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 15_000,
+    });
     const adapter = new PrismaPg(pool);
     super({ adapter });
     this.pool = pool;
