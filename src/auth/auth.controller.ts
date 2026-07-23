@@ -4,6 +4,7 @@ import {
   Get,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   UnauthorizedException,
@@ -14,10 +15,9 @@ import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import {
   LoginDto,
-  ResendSignupOtpDto,
-  SendSignupOtpDto,
+  RegisterDto,
+  ResendVerificationDto,
   UpdateAccountDto,
-  VerifySignupOtpDto,
 } from './dto/auth.dto';
 import { Public } from '../common/decorators/public.decorator';
 import {
@@ -33,21 +33,21 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
-  @Post('signup/send-otp')
-  sendSignupOtp(@Body() dto: SendSignupOtpDto) {
-    return this.authService.sendSignupOtp(dto);
+  @Post('signup')
+  signup(@Body() dto: RegisterDto) {
+    return this.authService.signup(dto);
   }
 
   @Public()
-  @Post('signup/resend-otp')
-  resendSignupOtp(@Body() dto: ResendSignupOtpDto) {
-    return this.authService.resendSignupOtp(dto);
+  @Get('verify-email')
+  verifyEmail(@Query('token') token: string) {
+    return this.authService.verifyEmail(token);
   }
 
   @Public()
-  @Post('signup/verify-otp')
-  verifySignupOtp(@Body() dto: VerifySignupOtpDto) {
-    return this.authService.verifySignupOtp(dto);
+  @Post('resend-verification')
+  resendVerification(@Body() dto: ResendVerificationDto) {
+    return this.authService.resendVerification(dto);
   }
 
   @Public()

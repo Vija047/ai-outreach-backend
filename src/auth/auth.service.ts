@@ -2,113 +2,167 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { AuthProvider, CreditReason } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { CreditsService } from '../credits/credits.service';
 import {
   LoginDto,
-  ResendSignupOtpDto,
-  SendSignupOtpDto,
+  RegisterDto,
+  ResendVerificationDto,
   UpdateAccountDto,
-  VerifySignupOtpDto,
 } from './dto/auth.dto';
-import { OtpService } from './otp.service';
 import { EmailService } from './email.service';
 import type { GoogleProfile } from './google.strategy';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
     private readonly creditsService: CreditsService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly otpService: OtpService,
     private readonly emailService: EmailService,
   ) {}
 
-  async sendSignupOtp(dto: SendSignupOtpDto) {
+  async signup(dto: RegisterDto) {
     const email = dto.email.toLowerCase().trim();
     const existing = await this.usersService.findByEmail(email);
-    if (existing) {
-      throw new ConflictException('Email already registered');
-    }
 
-    await this.otpService.checkResendRateLimit(email);
+    if (existing) {
+      if (existing.emailVerified) {
+        throw new ConflictException('Email already registered');
+      }
+      
+      const passwordHash = await bcrypt.hash(dto.password, 10);
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+      const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      await this.prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          name: dto.name.trim(),
+          passwordHash,
+          verificationToken,
+          verificationTokenExpires,
+        },
+      });
+
+      this.dispatchVerificationEmail(email, verificationToken, dto.name.trim());
+
+      return {
+        message: 'Registration successful. Please check your email and verify your account.',
+      };
+    }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const otp = this.otpService.createOtp();
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    await this.otpService.storePendingSignup(email, {
-      name: dto.name.trim(),
-      email,
-      passwordHash,
-    }, otp);
+    await this.prisma.$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          name: dto.name.trim(),
+          email,
+          passwordHash,
+          authProvider: AuthProvider.EMAIL,
+          emailVerified: false,
+          verificationToken,
+          verificationTokenExpires,
+          profile: { create: {} },
+        },
+      });
 
-    await this.emailService.sendOtpEmail(email, otp, dto.name.trim());
-
-    return {
-      message: 'Verification code sent to your email',
-      email,
-    };
-  }
-
-  async resendSignupOtp(dto: ResendSignupOtpDto) {
-    const email = dto.email.toLowerCase().trim();
-    const pending = await this.otpService.getPendingSignup(email);
-    if (!pending) {
-      throw new BadRequestException(
-        'No pending signup found. Please start registration again.',
-      );
-    }
-
-    await this.otpService.checkResendRateLimit(email);
-
-    const otp = this.otpService.createOtp();
-    await this.otpService.storePendingSignup(email, pending, otp);
-    await this.emailService.sendOtpEmail(email, otp, pending.name);
-
-    return { message: 'Verification code resent', email };
-  }
-
-  async verifySignupOtp(dto: VerifySignupOtpDto) {
-    const email = dto.email.toLowerCase().trim();
-    await this.otpService.verifyOtp(email, dto.otp);
-
-    const pending = await this.otpService.getPendingSignup(email);
-    if (!pending) {
-      throw new BadRequestException(
-        'Signup session expired. Please register again.',
-      );
-    }
-
-    const existing = await this.usersService.findByEmail(email);
-    if (existing) {
-      throw new ConflictException('Email already registered');
-    }
-
-    const user = await this.createUserWithSignupBonus({
-      name: pending.name,
-      email: pending.email,
-      passwordHash: pending.passwordHash,
-      authProvider: AuthProvider.EMAIL,
-      emailVerified: true,
+      const signupCredits = this.configService.get<number>('app.signupCredits') ?? 20;
+      await tx.creditLedger.create({
+        data: {
+          userId: created.id,
+          delta: signupCredits,
+          reason: CreditReason.SIGNUP_BONUS,
+        },
+      });
     });
 
-    await this.otpService.clearSignup(email);
+    this.dispatchVerificationEmail(email, verificationToken, dto.name.trim());
 
-    const accessToken = this.signToken(user.id, user.email, user.plan);
     return {
-      accessToken,
-      user: this.usersService.sanitizeUser(user),
+      message: 'Registration successful. Please check your email and verify your account.',
     };
+  }
+
+  private dispatchVerificationEmail(email: string, token: string, name: string): void {
+    void this.emailService.sendVerificationLinkEmail(email, token, name).catch((err) => {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Background verification email failed for ${email}: ${message}`);
+    });
+  }
+
+  async verifyEmail(token: string) {
+    if (!token) {
+      throw new BadRequestException('Verification token is required.');
+    }
+
+    const user = await this.prisma.user.findFirst({
+      where: { verificationToken: token },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Verification link is invalid or expired.');
+    }
+
+    if (user.verificationTokenExpires && user.verificationTokenExpires < new Date()) {
+      throw new BadRequestException('Verification link is invalid or expired.');
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        verificationToken: null,
+        verificationTokenExpires: null,
+      },
+    });
+
+    return { message: 'Email verified successfully.' };
+  }
+
+  async resendVerification(dto: ResendVerificationDto) {
+    const email = dto.email.toLowerCase().trim();
+    const user = await this.usersService.findByEmail(email);
+
+    if (!user) {
+      throw new NotFoundException('No account found with this email.');
+    }
+
+    if (user.emailVerified) {
+      throw new BadRequestException('This account is already verified.');
+    }
+
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        verificationToken,
+        verificationTokenExpires,
+      },
+    });
+
+    this.dispatchVerificationEmail(email, verificationToken, user.name);
+
+    return { message: 'Verification email resent successfully.' };
   }
 
   async login(dto: LoginDto) {
@@ -126,7 +180,7 @@ export class AuthService {
 
     if (!user.emailVerified) {
       throw new UnauthorizedException(
-        'Email not verified. Please complete signup verification.',
+        'Please verify your email before logging in.',
       );
     }
 

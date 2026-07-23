@@ -10,7 +10,8 @@ services:
     name: ai-outreach-api
     runtime: docker
     region: oregon
-    plan: free
+    # SMTP (Gmail) requires Starter+ — free tier blocks ports 587/465
+    plan: starter
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/v1/health
@@ -42,7 +43,9 @@ services:
       - key: GOOGLE_CALLBACK_URL
         sync: false
 
-      # Gmail SMTP (Nodemailer)
+      # Email OTP — Gmail SMTP (needs Starter plan; free tier blocks port 587)
+      - key: EMAIL_PROVIDER
+        value: smtp
       - key: EMAIL_USER
         sync: false
       - key: EMAIL_PASS

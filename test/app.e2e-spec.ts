@@ -4,62 +4,18 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
-import { OtpService, PendingSignup } from '../src/auth/otp.service';
-
-const otpMemory = new Map<string, { otp: string; pending: PendingSignup }>();
-const resendMemory = new Map<string, number>();
-
-function createInMemoryOtpService(): Partial<OtpService> {
-  return {
-    createOtp: () => '123456',
-    storePendingSignup: async (
-      email: string,
-      pending: PendingSignup,
-      otp: string,
-    ) => {
-      otpMemory.set(email.toLowerCase(), { otp, pending });
-    },
-    getPendingSignup: async (email: string) => {
-      return otpMemory.get(email.toLowerCase())?.pending ?? null;
-    },
-    verifyOtp: async (email: string, otp: string) => {
-      const stored = otpMemory.get(email.toLowerCase())?.otp;
-      if (!stored) {
-        throw new Error('Verification code expired or not found');
-      }
-      if (stored !== otp.trim()) {
-        throw new Error('Invalid verification code');
-      }
-      return true;
-    },
-    clearSignup: async (email: string) => {
-      otpMemory.delete(email.toLowerCase());
-    },
-    checkResendRateLimit: async (email: string) => {
-      const key = email.toLowerCase();
-      if (resendMemory.has(key)) {
-        throw new Error('Please wait before requesting another code');
-      }
-      resendMemory.set(key, Date.now());
-    },
-  };
-}
+import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('AI Outreach API (e2e)', () => {
+  jest.setTimeout(30000);
   let app: INestApplication<App>;
   let accessToken: string;
   const testEmail = `test-${Date.now()}@example.com`;
 
   beforeAll(async () => {
-    otpMemory.clear();
-    resendMemory.clear();
-
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    })
-      .overrideProvider(OtpService)
-      .useValue(createInMemoryOtpService())
-      .compile();
+    }).compile();
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api/v1');
@@ -85,9 +41,9 @@ describe('AI Outreach API (e2e)', () => {
       .expect(200);
   });
 
-  it('POST /api/v1/auth/signup/send-otp', async () => {
+  it('POST /api/v1/auth/signup', async () => {
     const res = await request(app.getHttpServer())
-      .post('/api/v1/auth/signup/send-otp')
+      .post('/api/v1/auth/signup')
       .send({
         name: 'Test User',
         email: testEmail,
@@ -95,25 +51,36 @@ describe('AI Outreach API (e2e)', () => {
       })
       .expect(201);
 
-    expect(res.body.message).toBeDefined();
-    expect(res.body.email).toBe(testEmail);
+    expect(res.body.message).toContain('Registration successful');
   });
 
-  it('POST /api/v1/auth/signup/verify-otp', async () => {
-    const res = await request(app.getHttpServer())
-      .post('/api/v1/auth/signup/verify-otp')
+  it('POST /api/v1/auth/login should fail for unverified user', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/auth/login')
       .send({
         email: testEmail,
-        otp: '123456',
+        password: 'password123',
       })
-      .expect(201);
-
-    expect(res.body.accessToken).toBeDefined();
-    expect(res.body.user.email).toBe(testEmail);
-    accessToken = res.body.accessToken;
+      .expect(401)
+      .expect((res) => {
+        expect(res.body.message).toContain('Please verify your email before logging in.');
+      });
   });
 
-  it('POST /api/v1/auth/login', async () => {
+  it('GET /api/v1/auth/verify-email', async () => {
+    const prisma = app.get(PrismaService);
+    const user = await prisma.user.findUnique({ where: { email: testEmail } });
+    expect(user).toBeDefined();
+    expect(user.verificationToken).toBeDefined();
+
+    const res = await request(app.getHttpServer())
+      .get(`/api/v1/auth/verify-email?token=${user.verificationToken}`)
+      .expect(200);
+
+    expect(res.body.message).toContain('Email verified successfully');
+  });
+
+  it('POST /api/v1/auth/login should succeed after verification', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({

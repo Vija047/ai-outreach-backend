@@ -7,7 +7,6 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { GoogleAuthGuard } from './google-auth.guard';
 import { GoogleStrategy } from './google.strategy';
-import { OtpService } from './otp.service';
 import { EmailService } from './email.service';
 import { UsersModule } from '../users/users.module';
 import { CreditsModule } from '../credits/credits.module';
@@ -34,7 +33,6 @@ import { CreditsModule } from '../credits/credits.module';
     JwtStrategy,
     GoogleStrategy,
     GoogleAuthGuard,
-    OtpService,
     EmailService,
   ],
   exports: [AuthService],

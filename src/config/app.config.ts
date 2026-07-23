@@ -45,6 +45,9 @@ export default registerAs('app', () => ({
   googleCallbackUrl:
     process.env.GOOGLE_CALLBACK_URL ??
     'http://localhost:3001/api/v1/auth/google/callback',
+  // smtp (default) | resend — SMTP needs Render Starter+ (free tier blocks port 587/465)
+  emailProvider: process.env.EMAIL_PROVIDER ?? 'smtp',
+  resendApiKey: process.env.RESEND_API_KEY ?? '',
   emailUser: process.env.EMAIL_USER ?? '',
   emailPass: process.env.EMAIL_PASS ?? '',
   emailFrom:
@@ -54,5 +57,8 @@ export default registerAs('app', () => ({
       : 'AI Outreach <noreply@localhost>'),
   smtpHost: process.env.SMTP_HOST ?? 'smtp.gmail.com',
   smtpPort: parseInt(process.env.SMTP_PORT ?? '587', 10),
+  smtpSecure:
+    process.env.SMTP_SECURE === 'true' ||
+    parseInt(process.env.SMTP_PORT ?? '587', 10) === 465,
   otpExpiryMinutes: parseInt(process.env.OTP_EXPIRY_MINUTES ?? '10', 10),
 }));
