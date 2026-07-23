@@ -1,4 +1,10 @@
 import 'dotenv/config';
+import * as dns from 'dns';
+
+// Force Node.js to prefer IPv4 over IPv6 when resolving DNS.
+// This prevents ENETUNREACH errors on environments like Render that lack outbound IPv6 routing.
+dns.setDefaultResultOrder('ipv4first');
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
