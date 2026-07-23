@@ -259,3 +259,18 @@ npm run start:dev
 
 API: `http://localhost:3001/api/v1`
 
+---
+
+## Deploy backend on Vercel (Serverless)
+
+We have provided configuration files (`vercel.json` and `src/vercel.ts`) to deploy the NestJS API to Vercel as a serverless function.
+
+> [!WARNING]
+> **BullMQ Workers on Vercel:** Vercel functions are ephemeral and terminate after sending responses. **BullMQ workers will not run continuously on Vercel.** Any company analysis job will be queued in Redis, but it will not be processed unless you run a persistent worker process (e.g., on Render as a private background worker or locally).
+
+### Steps to Deploy to Vercel:
+1. Import your backend repository into Vercel.
+2. Vercel will automatically detect the configuration from `vercel.json`.
+3. Set your production Environment Variables in Vercel settings (e.g., `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, etc.).
+4. Deploy the application.
+
