@@ -47,9 +47,7 @@ export class ContactMergeService {
     }
   }
 
-  fromRocketReachProfiles(
-    profiles: RocketReachProfile[],
-  ): RawPersonRecord[] {
+  fromRocketReachProfiles(profiles: RocketReachProfile[]): RawPersonRecord[] {
     return profiles
       .filter((profile) => profile.name?.trim())
       .map((profile) => ({
@@ -91,7 +89,10 @@ export class ContactMergeService {
       .filter((entry) => entry.first_name || entry.last_name || entry.value)
       .map((entry) => {
         const name =
-          [entry.first_name, entry.last_name].filter(Boolean).join(' ').trim() ||
+          [entry.first_name, entry.last_name]
+            .filter(Boolean)
+            .join(' ')
+            .trim() ||
           entry.value.split('@')[0]?.replace(/[._]/g, ' ') ||
           'Unknown';
 
@@ -139,7 +140,9 @@ export class ContactMergeService {
         sourceNote: record.sourceNote,
         rankScore: record.rankScore,
       }))
-      .sort((a, b) => b.rankScore - a.rankScore || a.name.localeCompare(b.name));
+      .sort(
+        (a, b) => b.rankScore - a.rankScore || a.name.localeCompare(b.name),
+      );
   }
 
   applyEmailLookup(
@@ -203,7 +206,7 @@ export class ContactMergeService {
       emailStatus:
         a.emailStatus !== EmailStatus.unknown
           ? a.emailStatus
-          : b.emailStatus ?? EmailStatus.unknown,
+          : (b.emailStatus ?? EmailStatus.unknown),
       source,
       sourceNote: this.buildSourceNote(source),
       rankScore: Math.max(a.rankScore, b.rankScore),

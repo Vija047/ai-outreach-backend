@@ -31,7 +31,11 @@ export class HunterClient {
         data?: {
           requests?: {
             credits?: { remaining?: number; available?: number; used?: number };
-            searches?: { remaining?: number; available?: number; used?: number };
+            searches?: {
+              remaining?: number;
+              available?: number;
+              used?: number;
+            };
           };
         };
       };

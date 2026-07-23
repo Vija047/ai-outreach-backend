@@ -5,10 +5,7 @@ import {
 } from '@nestjs/common';
 import { SellerProfile } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  REQUIRED_PROFILE_FIELDS,
-  UpdateProfileDto,
-} from './dto/profile.dto';
+import { REQUIRED_PROFILE_FIELDS, UpdateProfileDto } from './dto/profile.dto';
 
 @Injectable()
 export class ProfileService {

@@ -63,7 +63,8 @@ export class ContactDiscoveryService {
 
     if (this.rocketReach.isConfigured()) {
       try {
-        const searchResult = await this.rocketReach.searchDecisionMakers(domain);
+        const searchResult =
+          await this.rocketReach.searchDecisionMakers(domain);
         linkedinCompanyUrl = searchResult.linkedinCompanyUrl;
 
         const enrichedProfiles =
@@ -150,7 +151,10 @@ export class ContactDiscoveryService {
           ),
         );
       } catch (error) {
-        this.logger.warn(`Hunter email lookup failed for ${contact.name}`, error);
+        this.logger.warn(
+          `Hunter email lookup failed for ${contact.name}`,
+          error,
+        );
         warnings.push('Some email lookups were skipped due to Hunter limits.');
         updated.push(contact);
       }

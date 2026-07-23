@@ -11,9 +11,7 @@ export class CompanyAnalysisProcessor
   extends WorkerHost
   implements OnModuleDestroy
 {
-  constructor(
-    private readonly companyAnalysisService: CompanyAnalysisService,
-  ) {
+  constructor(private readonly companyAnalysisService: CompanyAnalysisService) {
     super();
   }
 

@@ -1,6 +1,13 @@
 import { OutreachGenerationResult, OutreachVariant } from './llm.port';
 
-const NESTED_KEYS = ['outreach', 'result', 'data', 'response', 'content', 'output'];
+const NESTED_KEYS = [
+  'outreach',
+  'result',
+  'data',
+  'response',
+  'content',
+  'output',
+];
 
 const EMAIL_KEYS = [
   'email',
@@ -37,8 +44,18 @@ const CONNECTION_KEYS = [
   'connection_request',
 ];
 
-const FOLLOWUP1_KEYS = ['followUp1', 'follow_up_1', 'followup1', 'follow_up_one'];
-const FOLLOWUP2_KEYS = ['followUp2', 'follow_up_2', 'followup2', 'follow_up_two'];
+const FOLLOWUP1_KEYS = [
+  'followUp1',
+  'follow_up_1',
+  'followup1',
+  'follow_up_one',
+];
+const FOLLOWUP2_KEYS = [
+  'followUp2',
+  'follow_up_2',
+  'followup2',
+  'follow_up_two',
+];
 
 export function parseModelJson(content: string): Record<string, unknown> {
   const trimmed = content.trim();
@@ -57,14 +74,19 @@ export function parseModelJson(content: string): Record<string, unknown> {
     const start = trimmed.indexOf('{');
     const end = trimmed.lastIndexOf('}');
     if (start >= 0 && end > start) {
-      return JSON.parse(trimmed.slice(start, end + 1)) as Record<string, unknown>;
+      return JSON.parse(trimmed.slice(start, end + 1)) as Record<
+        string,
+        unknown
+      >;
     }
 
     throw new Error('Model returned invalid JSON');
   }
 }
 
-function flattenOutreachRaw(raw: Record<string, unknown>): Record<string, unknown> {
+function flattenOutreachRaw(
+  raw: Record<string, unknown>,
+): Record<string, unknown> {
   let merged = { ...raw };
 
   for (const key of NESTED_KEYS) {
@@ -113,7 +135,10 @@ function readSubjectLines(raw: Record<string, unknown>): string[] {
     raw.email_subjects;
 
   if (Array.isArray(value)) {
-    const lines = value.map(String).map((line) => line.trim()).filter(Boolean);
+    const lines = value
+      .map(String)
+      .map((line) => line.trim())
+      .filter(Boolean);
     if (lines.length > 0) return lines.slice(0, 5);
   }
   if (typeof value === 'string' && value.trim()) {
@@ -160,8 +185,7 @@ export function normalizeOutreachResult(
     linkedInDm:
       linkedInDm ||
       `Hi! I wanted to reach out about an idea for ${companyName}.`,
-    connectionNote:
-      connectionNote || `Interested in ${companyName}'s work.`,
+    connectionNote: connectionNote || `Interested in ${companyName}'s work.`,
     subjectLines: readSubjectLines(flat),
     followUp1:
       followUp1 || `Just following up on my note about ${companyName}.`,
@@ -175,7 +199,10 @@ export const OUTREACH_JSON_SCHEMA = {
   properties: {
     email: { type: 'string', description: 'Full cold email body' },
     linkedInDm: { type: 'string', description: 'LinkedIn direct message' },
-    connectionNote: { type: 'string', description: 'LinkedIn connection request note' },
+    connectionNote: {
+      type: 'string',
+      description: 'LinkedIn connection request note',
+    },
     subjectLines: {
       type: 'array',
       items: { type: 'string' },
@@ -261,8 +288,7 @@ export function normalizeOutreachVariantsResult(
       );
 
     if (variants.length > 0) {
-      const primary =
-        variants.find((v) => v.tone === 'Direct') ?? variants[0];
+      const primary = variants.find((v) => v.tone === 'Direct') ?? variants[0];
       return { ...primary, variants };
     }
   }

@@ -58,20 +58,15 @@ GOOGLE_CALLBACK_URL=https://YOUR-API.onrender.com/api/v1/auth/google/callback
 
 NODE_ENV=production
 
+# Render FREE tier workaround (recommended for Free tier — automatically verifies users upon signup)
+BYPASS_EMAIL_VERIFICATION=true
 
-
-# Gmail SMTP (see "Email with SMTP" below — requires Render Starter plan)
-
+# Or Gmail SMTP (requires Render Starter plan, as Free tier blocks SMTP ports)
 EMAIL_PROVIDER=smtp
-
 EMAIL_USER=getaioutreach@gmail.com
-
 EMAIL_PASS=            # Google App Password (no spaces)
-
 EMAIL_FROM=AI Outreach <getaioutreach@gmail.com>
-
 SMTP_HOST=smtp.gmail.com
-
 SMTP_PORT=587
 
 
@@ -186,7 +181,7 @@ In Render → **Environment**:
 
 
 
-Remove `RESEND_API_KEY` if set (SMTP takes priority when `EMAIL_PROVIDER=smtp`).
+To bypass email verification entirely on Render Free tier instead of upgrading, set `BYPASS_EMAIL_VERIFICATION=true`.
 
 
 

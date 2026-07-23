@@ -6,7 +6,8 @@ export function parseRedisUrl(redisUrl: string): RedisOptions {
     ...(isTls ? { tls: {} } : {}),
     maxRetriesPerRequest: null,
     connectTimeout: 15000,
-    retryStrategy: (times: number) => (times > 3 ? null : Math.min(times * 500, 2000)),
+    retryStrategy: (times: number) =>
+      times > 3 ? null : Math.min(times * 500, 2000),
   };
 }
 

@@ -39,36 +39,57 @@ export class AuthService {
   async signup(dto: RegisterDto) {
     const email = dto.email.toLowerCase().trim();
     const existing = await this.usersService.findByEmail(email);
+    const bypassVerification =
+      this.configService.get<boolean>('app.bypassEmailVerification') ?? false;
 
     if (existing) {
       if (existing.emailVerified) {
         throw new ConflictException('Email already registered');
       }
-      
+
       const passwordHash = await bcrypt.hash(dto.password, 10);
-      const verificationToken = crypto.randomBytes(32).toString('hex');
-      const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const verificationToken = bypassVerification
+        ? null
+        : crypto.randomBytes(32).toString('hex');
+      const verificationTokenExpires = bypassVerification
+        ? null
+        : new Date(Date.now() + 24 * 60 * 60 * 1000);
 
       await this.prisma.user.update({
         where: { id: existing.id },
         data: {
           name: dto.name.trim(),
           passwordHash,
+          emailVerified: bypassVerification,
           verificationToken,
           verificationTokenExpires,
         },
       });
 
-      this.dispatchVerificationEmail(email, verificationToken, dto.name.trim());
+      if (!bypassVerification) {
+        this.dispatchVerificationEmail(
+          email,
+          verificationToken!,
+          dto.name.trim(),
+        );
+        return {
+          message:
+            'Registration successful. Please check your email and verify your account.',
+        };
+      }
 
       return {
-        message: 'Registration successful. Please check your email and verify your account.',
+        message: 'Registration successful. You can now log in.',
       };
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const verificationToken = bypassVerification
+      ? null
+      : crypto.randomBytes(32).toString('hex');
+    const verificationTokenExpires = bypassVerification
+      ? null
+      : new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     await this.prisma.$transaction(async (tx) => {
       const created = await tx.user.create({
@@ -77,14 +98,15 @@ export class AuthService {
           email,
           passwordHash,
           authProvider: AuthProvider.EMAIL,
-          emailVerified: false,
+          emailVerified: bypassVerification,
           verificationToken,
           verificationTokenExpires,
           profile: { create: {} },
         },
       });
 
-      const signupCredits = this.configService.get<number>('app.signupCredits') ?? 20;
+      const signupCredits =
+        this.configService.get<number>('app.signupCredits') ?? 20;
       await tx.creditLedger.create({
         data: {
           userId: created.id,
@@ -94,18 +116,32 @@ export class AuthService {
       });
     });
 
-    this.dispatchVerificationEmail(email, verificationToken, dto.name.trim());
+    if (!bypassVerification) {
+      this.dispatchVerificationEmail(email, verificationToken!, dto.name.trim());
+      return {
+        message:
+          'Registration successful. Please check your email and verify your account.',
+      };
+    }
 
     return {
-      message: 'Registration successful. Please check your email and verify your account.',
+      message: 'Registration successful. You can now log in.',
     };
   }
 
-  private dispatchVerificationEmail(email: string, token: string, name: string): void {
-    void this.emailService.sendVerificationLinkEmail(email, token, name).catch((err) => {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Background verification email failed for ${email}: ${message}`);
-    });
+  private dispatchVerificationEmail(
+    email: string,
+    token: string,
+    name: string,
+  ): void {
+    void this.emailService
+      .sendVerificationLinkEmail(email, token, name)
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(
+          `Background verification email failed for ${email}: ${message}`,
+        );
+      });
   }
 
   async verifyEmail(token: string) {
@@ -121,7 +157,10 @@ export class AuthService {
       throw new BadRequestException('Verification link is invalid or expired.');
     }
 
-    if (user.verificationTokenExpires && user.verificationTokenExpires < new Date()) {
+    if (
+      user.verificationTokenExpires &&
+      user.verificationTokenExpires < new Date()
+    ) {
       throw new BadRequestException('Verification link is invalid or expired.');
     }
 
@@ -252,7 +291,7 @@ export class AuthService {
   isGoogleAuthConfigured(): boolean {
     return Boolean(
       this.configService.get<string>('app.googleClientId') &&
-        this.configService.get<string>('app.googleClientSecret'),
+      this.configService.get<string>('app.googleClientSecret'),
     );
   }
 

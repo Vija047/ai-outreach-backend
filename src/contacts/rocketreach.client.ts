@@ -102,24 +102,21 @@ export class RocketReachClient {
       normalizedDomain.split('.')[0].charAt(0).toUpperCase() +
       normalizedDomain.split('.')[0].slice(1);
 
-    const response = await this.fetchWithTimeout(
-      `${BASE_URL}/person/search`,
-      {
-        method: 'POST',
-        headers: {
-          ...this.authHeaders(apiKey),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: {
-            current_employer: [companyGuess],
-            current_title: DECISION_MAKER_TITLES,
-          },
-          page_size: 10,
-          order_by: 'popularity',
-        }),
+    const response = await this.fetchWithTimeout(`${BASE_URL}/person/search`, {
+      method: 'POST',
+      headers: {
+        ...this.authHeaders(apiKey),
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({
+        query: {
+          current_employer: [companyGuess],
+          current_title: DECISION_MAKER_TITLES,
+        },
+        page_size: 10,
+        order_by: 'popularity',
+      }),
+    });
 
     if (response.status === 403) {
       throw new Error('ROCKETREACH_HTTP_403');
@@ -167,7 +164,7 @@ export class RocketReachClient {
 
     for (const row of rows) {
       if (!row || typeof row !== 'object') continue;
-      const record = row as Record<string, unknown>;
+      const record = row;
       const name = typeof record.name === 'string' ? record.name.trim() : '';
       if (!name) continue;
 
@@ -280,12 +277,13 @@ export class RocketReachClient {
       const body = (await response.json()) as RocketReachLookupResult;
       const picked = this.pickBestEmail(body);
 
-      if (
-        body.status &&
-        body.status !== 'complete' &&
-        !picked.email
-      ) {
-        return this.mergeLookupProfile(profile, body, null, EmailStatus.unknown);
+      if (body.status && body.status !== 'complete' && !picked.email) {
+        return this.mergeLookupProfile(
+          profile,
+          body,
+          null,
+          EmailStatus.unknown,
+        );
       }
 
       return this.mergeLookupProfile(
@@ -360,7 +358,9 @@ export class RocketReachClient {
     return { email: null, status: EmailStatus.unknown, confidence: null };
   }
 
-  private extractRemainingLookups(body: Record<string, unknown>): number | null {
+  private extractRemainingLookups(
+    body: Record<string, unknown>,
+  ): number | null {
     const creditUsage = body.credit_usage;
     if (Array.isArray(creditUsage)) {
       for (const entry of creditUsage) {
@@ -395,7 +395,7 @@ export class RocketReachClient {
         'remaining',
       ]) {
         if (typeof credits[key] === 'number') {
-          return credits[key] as number;
+          return credits[key];
         }
       }
     }

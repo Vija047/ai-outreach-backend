@@ -14,7 +14,9 @@ export class GoogleAuthGuard extends AuthGuard('google') {
 
   canActivate(context: ExecutionContext) {
     const clientId = this.configService.get<string>('app.googleClientId');
-    const clientSecret = this.configService.get<string>('app.googleClientSecret');
+    const clientSecret = this.configService.get<string>(
+      'app.googleClientSecret',
+    );
     if (!clientId || !clientSecret) {
       throw new UnauthorizedException('Google sign-in is not configured');
     }

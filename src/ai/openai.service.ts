@@ -6,7 +6,11 @@ import {
   LlmPort,
   OutreachGenerationResult,
 } from './llm.port';
-import { normalizeOutreachVariantsResult, OUTREACH_SYSTEM_PROMPT, parseModelJson } from './json-utils';
+import {
+  normalizeOutreachVariantsResult,
+  OUTREACH_SYSTEM_PROMPT,
+  parseModelJson,
+} from './json-utils';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
@@ -222,7 +226,10 @@ export class OpenAiService implements LlmPort {
         });
 
         const content = response.choices[0]?.message?.content ?? '{}';
-        return normalizeOutreachVariantsResult(parseModelJson(content), companyName);
+        return normalizeOutreachVariantsResult(
+          parseModelJson(content),
+          companyName,
+        );
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Unknown generation error';

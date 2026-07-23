@@ -19,33 +19,36 @@ export class TavilyNewsService implements NewsPort {
 
     try {
       const response = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        api_key: apiKey,
-        query,
-        max_results: 5,
-        include_answer: false,
-      }),
-    });
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: apiKey,
+          query,
+          max_results: 5,
+          include_answer: false,
+        }),
+      });
 
-    if (!response.ok) {
-      const text = await response.text();
-      this.logger.warn(`Tavily error (${response.status}): ${text}`);
-      return [];
-    }
+      if (!response.ok) {
+        const text = await response.text();
+        this.logger.warn(`Tavily error (${response.status}): ${text}`);
+        return [];
+      }
 
-    const data = (await response.json()) as {
-      results?: Array<{ title: string; url: string; content: string }>;
-    };
+      const data = (await response.json()) as {
+        results?: Array<{ title: string; url: string; content: string }>;
+      };
 
-    return (data.results ?? []).map((r) => ({
-      title: r.title,
-      url: r.url,
-      content: r.content,
-    }));
+      return (data.results ?? []).map((r) => ({
+        title: r.title,
+        url: r.url,
+        content: r.content,
+      }));
     } catch (error) {
-      this.logger.warn('Tavily enrichment failed, continuing without news', error);
+      this.logger.warn(
+        'Tavily enrichment failed, continuing without news',
+        error,
+      );
       return [];
     }
   }

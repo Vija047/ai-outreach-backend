@@ -1,8 +1,19 @@
-import { Controller, Get, Param, Patch, Body, Query, Post } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Body,
+  Query,
+  Post,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { HistoryService } from './history.service';
 import { UpdateGenerationDto } from './dto/update-generation.dto';
-import { CurrentUser, AuthUserPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  AuthUserPayload,
+} from '../common/decorators/current-user.decorator';
 
 @ApiTags('history')
 @ApiBearerAuth()

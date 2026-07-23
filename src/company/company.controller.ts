@@ -3,7 +3,10 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CompanyService } from './company.service';
 import { ContactsService } from '../contacts/contacts.service';
 import { AnalyzeCompanyDto } from './dto/company.dto';
-import { CurrentUser, AuthUserPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  AuthUserPayload,
+} from '../common/decorators/current-user.decorator';
 
 @ApiTags('company')
 @ApiBearerAuth()
@@ -23,34 +26,22 @@ export class CompanyController {
   }
 
   @Get('jobs/:jobId')
-  getJob(
-    @CurrentUser() user: AuthUserPayload,
-    @Param('jobId') jobId: string,
-  ) {
+  getJob(@CurrentUser() user: AuthUserPayload, @Param('jobId') jobId: string) {
     return this.companyService.getJob(jobId, user.id);
   }
 
   @Get(':id')
-  getCompany(
-    @CurrentUser() user: AuthUserPayload,
-    @Param('id') id: string,
-  ) {
+  getCompany(@CurrentUser() user: AuthUserPayload, @Param('id') id: string) {
     return this.companyService.getCompany(id, user.id);
   }
 
   @Get(':id/hooks')
-  getHooks(
-    @CurrentUser() user: AuthUserPayload,
-    @Param('id') id: string,
-  ) {
+  getHooks(@CurrentUser() user: AuthUserPayload, @Param('id') id: string) {
     return this.companyService.getHooks(id, user.id);
   }
 
   @Get(':id/contacts')
-  getContacts(
-    @CurrentUser() user: AuthUserPayload,
-    @Param('id') id: string,
-  ) {
+  getContacts(@CurrentUser() user: AuthUserPayload, @Param('id') id: string) {
     return this.contactsService.getContacts(id, user.id);
   }
 

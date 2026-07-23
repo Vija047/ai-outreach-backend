@@ -11,7 +11,7 @@ describe('ContactMergeService', () => {
 
   it('normalizes names for deduplication', () => {
     expect(service.normalizeName('Priya Sharma')).toBe('priya sharma');
-    expect(service.normalizeName('  John  O\'Brien  ')).toBe('john obrien');
+    expect(service.normalizeName("  John  O'Brien  ")).toBe('john obrien');
   });
 
   it('ranks founders and CEOs highest', () => {

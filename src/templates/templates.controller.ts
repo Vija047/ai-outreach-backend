@@ -10,7 +10,10 @@ import {
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { TemplatesService } from './templates.service';
 import { CreateTemplateDto, UpdateTemplateDto } from './dto/template.dto';
-import { CurrentUser, AuthUserPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  AuthUserPayload,
+} from '../common/decorators/current-user.decorator';
 
 @ApiTags('templates')
 @ApiBearerAuth()
@@ -24,10 +27,7 @@ export class TemplatesController {
   }
 
   @Post()
-  create(
-    @CurrentUser() user: AuthUserPayload,
-    @Body() dto: CreateTemplateDto,
-  ) {
+  create(@CurrentUser() user: AuthUserPayload, @Body() dto: CreateTemplateDto) {
     return this.templatesService.create(user.id, dto);
   }
 

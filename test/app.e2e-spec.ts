@@ -63,7 +63,9 @@ describe('AI Outreach API (e2e)', () => {
       })
       .expect(401)
       .expect((res) => {
-        expect(res.body.message).toContain('Please verify your email before logging in.');
+        expect(res.body.message).toContain(
+          'Please verify your email before logging in.',
+        );
       });
   });
 

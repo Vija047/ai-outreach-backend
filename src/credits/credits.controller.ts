@@ -1,7 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CreditsService } from './credits.service';
-import { CurrentUser, AuthUserPayload } from '../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  AuthUserPayload,
+} from '../common/decorators/current-user.decorator';
 
 @ApiTags('credits')
 @ApiBearerAuth()

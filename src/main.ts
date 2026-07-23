@@ -32,8 +32,7 @@ async function bootstrap() {
 
   const frontendUrl =
     configService.get<string>('app.frontendUrl') ?? 'http://localhost:3000';
-  const extraOrigins =
-    configService.get<string[]>('app.corsOrigins') ?? [];
+  const extraOrigins = configService.get<string[]>('app.corsOrigins') ?? [];
   const origins = new Set<string>([frontendUrl, ...extraOrigins]);
   if (!isProd) {
     origins.add('http://localhost:3000');

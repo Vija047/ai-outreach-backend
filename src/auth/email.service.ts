@@ -7,17 +7,13 @@ import {
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
-import { Resend } from 'resend';
 
 const SMTP_TIMEOUT_MS = 5_000;
-
-type EmailProvider = 'smtp' | 'resend';
 
 @Injectable()
 export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
   private transporter: Transporter | null = null;
-  private resendClient: Resend | null = null;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -34,7 +30,7 @@ export class EmailService implements OnModuleInit {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(
         `SMTP verify failed: ${message}. ` +
-          'Render FREE tier blocks ports 587/465 — upgrade to Starter ($7/mo) or set RESEND_API_KEY as fallback.',
+          'Render FREE tier blocks ports 587/465 — upgrade to Starter ($7/mo) to enable Gmail SMTP.',
       );
     }
   }
@@ -47,24 +43,17 @@ export class EmailService implements OnModuleInit {
     return Boolean(user && pass);
   }
 
-  private hasResendCredentials(): boolean {
-    return Boolean(
-      this.configService.get<string>('app.resendApiKey')?.trim(),
-    );
-  }
-
-  private resolveProvider(): EmailProvider | null {
+  private resolveProvider(): 'smtp' | null {
     const explicit = this.configService
       .get<string>('app.emailProvider')
       ?.trim()
       .toLowerCase();
 
-    if (explicit === 'smtp' || explicit === 'resend') {
+    if (explicit === 'smtp') {
       return explicit;
     }
 
     if (this.hasSmtpCredentials()) return 'smtp';
-    if (this.hasResendCredentials()) return 'resend';
 
     return null;
   }
@@ -98,28 +87,11 @@ export class EmailService implements OnModuleInit {
     return this.transporter;
   }
 
-  private getResendClient(): Resend | null {
-    if (this.resendClient) return this.resendClient;
-
-    const apiKey = this.configService.get<string>('app.resendApiKey')?.trim();
-    if (!apiKey) return null;
-
-    this.resendClient = new Resend(apiKey);
-    return this.resendClient;
-  }
-
   private resolveFromAddress(): string | undefined {
     const user = this.configService.get<string>('app.emailUser')?.trim();
     return (
       this.configService.get<string>('app.emailFrom')?.trim() ||
       (user ? `AI Outreach <${user}>` : undefined)
-    );
-  }
-
-  private resolveResendFromAddress(): string {
-    return (
-      this.configService.get<string>('app.emailFrom')?.trim() ||
-      'AI Outreach <onboarding@resend.dev>'
     );
   }
 
@@ -172,31 +144,6 @@ export class EmailService implements OnModuleInit {
     };
   }
 
-  private async sendViaResend(
-    to: string,
-    from: string,
-    subject: string,
-    html: string,
-  ): Promise<void> {
-    const resend = this.getResendClient();
-    if (!resend) {
-      throw new ServiceUnavailableException('Email service is not configured');
-    }
-
-    const { error } = await resend.emails.send({
-      from,
-      to: [to],
-      subject,
-      html,
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    this.logger.log(`Email sent to ${to} via Resend`);
-  }
-
   private async sendViaSmtp(
     to: string,
     from: string,
@@ -214,7 +161,7 @@ export class EmailService implements OnModuleInit {
 
   private throwEmailUnavailable(message: string): never {
     throw new ServiceUnavailableException(
-      `${message} On Render free tier: upgrade to Starter for Gmail SMTP, or set RESEND_API_KEY.`,
+      `${message} On Render free tier: upgrade to Starter for Gmail SMTP, or enable BYPASS_EMAIL_VERIFICATION.`,
     );
   }
 
@@ -236,40 +183,10 @@ export class EmailService implements OnModuleInit {
     }
 
     try {
-      if (provider === 'smtp') {
-        if (!from) {
-          throw new ServiceUnavailableException('EMAIL_FROM is not configured');
-        }
-
-        try {
-          await this.sendViaSmtp(to, from, subject, html);
-          return;
-        } catch (smtpErr) {
-          const smtpMessage =
-            smtpErr instanceof Error ? smtpErr.message : String(smtpErr);
-          this.logger.error(`SMTP failed: ${smtpMessage}`);
-
-          if (this.hasResendCredentials()) {
-            this.logger.warn('Falling back to Resend after SMTP failure');
-            await this.sendViaResend(
-              to,
-              this.resolveResendFromAddress(),
-              subject,
-              html,
-            );
-            return;
-          }
-
-          throw smtpErr;
-        }
+      if (!from) {
+        throw new ServiceUnavailableException('EMAIL_FROM is not configured');
       }
-
-      await this.sendViaResend(
-        to,
-        this.resolveResendFromAddress(),
-        subject,
-        html,
-      );
+      await this.sendViaSmtp(to, from, subject, html);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`Failed to send OTP email: ${message}`);
@@ -282,18 +199,25 @@ export class EmailService implements OnModuleInit {
     }
   }
 
-  async sendVerificationLinkEmail(to: string, token: string, name: string): Promise<void> {
+  async sendVerificationLinkEmail(
+    to: string,
+    token: string,
+    name: string,
+  ): Promise<void> {
     const nodeEnv = this.configService.get<string>('app.nodeEnv');
     const isProd = nodeEnv === 'production';
     const provider = this.resolveProvider();
     const from = this.resolveFromAddress();
-    
+
     const frontendUrl =
       this.configService.get<string>('app.frontendUrl') ??
       'http://localhost:3000';
     const verificationLink = `${frontendUrl}/verify-email?token=${token}`;
-    
-    const { subject, html } = this.buildVerificationLinkContent(verificationLink, name);
+
+    const { subject, html } = this.buildVerificationLinkContent(
+      verificationLink,
+      name,
+    );
 
     if (!provider) {
       if (isProd) {
@@ -306,40 +230,10 @@ export class EmailService implements OnModuleInit {
     }
 
     try {
-      if (provider === 'smtp') {
-        if (!from) {
-          throw new ServiceUnavailableException('EMAIL_FROM is not configured');
-        }
-
-        try {
-          await this.sendViaSmtp(to, from, subject, html);
-          return;
-        } catch (smtpErr) {
-          const smtpMessage =
-            smtpErr instanceof Error ? smtpErr.message : String(smtpErr);
-          this.logger.error(`SMTP failed: ${smtpMessage}`);
-
-          if (this.hasResendCredentials()) {
-            this.logger.warn('Falling back to Resend after SMTP failure');
-            await this.sendViaResend(
-              to,
-              this.resolveResendFromAddress(),
-              subject,
-              html,
-            );
-            return;
-          }
-
-          throw smtpErr;
-        }
+      if (!from) {
+        throw new ServiceUnavailableException('EMAIL_FROM is not configured');
       }
-
-      await this.sendViaResend(
-        to,
-        this.resolveResendFromAddress(),
-        subject,
-        html,
-      );
+      await this.sendViaSmtp(to, from, subject, html);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`Failed to send verification email: ${message}`);
@@ -348,7 +242,9 @@ export class EmailService implements OnModuleInit {
           'Failed to send verification email. Please try again shortly.',
         );
       }
-      this.logger.warn(`Verification Link fallback for ${to}: ${verificationLink}`);
+      this.logger.warn(
+        `Verification Link fallback for ${to}: ${verificationLink}`,
+      );
     }
   }
 }

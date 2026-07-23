@@ -23,7 +23,9 @@ export function validateProductionEnv(): void {
     return;
   }
 
-  const missing = PRODUCTION_REQUIRED.filter((key) => !process.env[key]?.trim());
+  const missing = PRODUCTION_REQUIRED.filter(
+    (key) => !process.env[key]?.trim(),
+  );
   if (missing.length > 0) {
     throw new Error(
       `Missing required production environment variables: ${missing.join(', ')}`,
@@ -58,7 +60,6 @@ export function validateProductionEnv(): void {
 
   for (const key of PRODUCTION_RECOMMENDED) {
     if (!process.env[key]?.trim()) {
-      // eslint-disable-next-line no-console
       console.warn(`[config] Recommended production env var not set: ${key}`);
     }
   }

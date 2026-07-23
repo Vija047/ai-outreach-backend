@@ -7,7 +7,12 @@ import {
 } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { CreditReason, CompanyHook, CompanyContact, Prisma } from '@prisma/client';
+import {
+  CreditReason,
+  CompanyHook,
+  CompanyContact,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProfileService } from '../profile/profile.service';
 import { CreditsService } from '../credits/credits.service';
@@ -62,8 +67,7 @@ export class GenerateService {
     }
 
     const tone = 'Direct';
-    const cost =
-      this.configService.get<number>('app.generateCreditCost') ?? 1;
+    const cost = this.configService.get<number>('app.generateCreditCost') ?? 1;
 
     let result;
     try {

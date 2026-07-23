@@ -81,10 +81,7 @@ export class CompanyAnalysisService {
     return HookSourceType.WEBSITE;
   }
 
-  private enrichHooks(
-    hooks: CompanyAnalysisResult['hooks'],
-    jobUrl: string,
-  ) {
+  private enrichHooks(hooks: CompanyAnalysisResult['hooks'], jobUrl: string) {
     return hooks.map((hook) => {
       const sourceType = this.normalizeHookSourceType(hook.sourceType);
       const sourceUrl =
@@ -103,8 +100,7 @@ export class CompanyAnalysisService {
   }
 
   private async refundAnalyzeCredit(userId: string, jobId: string) {
-    const cost =
-      this.configService.get<number>('app.analyzeCreditCost') ?? 1;
+    const cost = this.configService.get<number>('app.analyzeCreditCost') ?? 1;
     await this.creditsService.grant(
       userId,
       cost,
@@ -177,7 +173,10 @@ export class CompanyAnalysisService {
         }
         throw error;
       }
-      const websiteContent = pages.map((p) => p.markdown).join('\n\n').trim();
+      const websiteContent = pages
+        .map((p) => p.markdown)
+        .join('\n\n')
+        .trim();
 
       if (websiteContent.length < MIN_SCRAPED_CONTENT_LENGTH) {
         throw new AnalysisError(
@@ -253,10 +252,7 @@ export class CompanyAnalysisService {
       try {
         await this.contactDiscovery.discoverIfNeeded(company.id, job.domain);
       } catch (error) {
-        this.logger.warn(
-          `Contact discovery failed for ${job.domain}`,
-          error,
-        );
+        this.logger.warn(`Contact discovery failed for ${job.domain}`, error);
       }
 
       await this.prisma.analysisJob.update({

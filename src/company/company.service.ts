@@ -13,10 +13,7 @@ import { CreditsService } from '../credits/credits.service';
 import { CompanyAnalysisService } from './analysis/company-analysis.service';
 import { COMPANY_ANALYSIS_QUEUE } from './analysis/company-analysis.processor';
 import { AnalyzeCompanyDto } from './dto/company.dto';
-import {
-  extractDomain,
-  normalizeAnalyzeUrl,
-} from '../common/utils/url.utils';
+import { extractDomain, normalizeAnalyzeUrl } from '../common/utils/url.utils';
 
 @Injectable()
 export class CompanyService {
@@ -42,8 +39,7 @@ export class CompanyService {
     const skipCharge = !!cachedId;
 
     if (!skipCharge) {
-      const cost =
-        this.configService.get<number>('app.analyzeCreditCost') ?? 1;
+      const cost = this.configService.get<number>('app.analyzeCreditCost') ?? 1;
       await this.creditsService.consume(
         userId,
         cost,
@@ -60,7 +56,9 @@ export class CompanyService {
         url: normalizedUrl,
         domain,
         status: AnalysisJobStatus.QUEUED,
-        ...(cachedId ? { companyId: cachedId, status: AnalysisJobStatus.DONE } : {}),
+        ...(cachedId
+          ? { companyId: cachedId, status: AnalysisJobStatus.DONE }
+          : {}),
       },
     });
 

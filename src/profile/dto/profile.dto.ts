@@ -53,14 +53,20 @@ export class UpdateProfileDto {
   @IsNotEmpty()
   tone?: string;
 
-  @ApiPropertyOptional({ example: 'IN', description: 'ISO 3166-1 alpha-2 country code' })
+  @ApiPropertyOptional({
+    example: 'IN',
+    description: 'ISO 3166-1 alpha-2 country code',
+  })
   @IsOptional()
   @IsString()
   @Length(2, 2)
   @Matches(/^[A-Z]{2}$/)
   phoneCountryCode?: string;
 
-  @ApiPropertyOptional({ example: '9876543210', description: 'National phone number digits only' })
+  @ApiPropertyOptional({
+    example: '9876543210',
+    description: 'National phone number digits only',
+  })
   @IsOptional()
   @IsString()
   @Matches(/^[0-9]{6,15}$/)

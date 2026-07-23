@@ -45,9 +45,9 @@ export default registerAs('app', () => ({
   googleCallbackUrl:
     process.env.GOOGLE_CALLBACK_URL ??
     'http://localhost:3001/api/v1/auth/google/callback',
-  // smtp (default) | resend — SMTP needs Render Starter+ (free tier blocks port 587/465)
+  // smtp (default) — SMTP needs Render Starter+ (free tier blocks port 587/465)
   emailProvider: process.env.EMAIL_PROVIDER ?? 'smtp',
-  resendApiKey: process.env.RESEND_API_KEY ?? '',
+  bypassEmailVerification: process.env.BYPASS_EMAIL_VERIFICATION === 'true',
   emailUser: process.env.EMAIL_USER ?? '',
   emailPass: process.env.EMAIL_PASS ?? '',
   emailFrom:
