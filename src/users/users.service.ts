@@ -22,11 +22,6 @@ export class UsersService {
   }
 
   sanitizeUser(user: User) {
-    const { passwordHash: _, googleId: __, ...rest } = user;
-    return rest;
-  }
-
-  findByGoogleId(googleId: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { googleId } });
+    return user;
   }
 }

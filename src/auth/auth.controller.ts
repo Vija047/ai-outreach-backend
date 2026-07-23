@@ -4,92 +4,19 @@ import {
   Get,
   Patch,
   Post,
-  Query,
-  Req,
-  Res,
-  UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import {
-  LoginDto,
-  RegisterDto,
-  ResendVerificationDto,
-  UpdateAccountDto,
-} from './dto/auth.dto';
-import { Public } from '../common/decorators/public.decorator';
+import { UpdateAccountDto } from './dto/auth.dto';
 import {
   CurrentUser,
   AuthUserPayload,
 } from '../common/decorators/current-user.decorator';
-import { GoogleAuthGuard } from './google-auth.guard';
-import type { GoogleProfile } from './google.strategy';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-
-  @Public()
-  @Post('signup')
-  signup(@Body() dto: RegisterDto) {
-    return this.authService.signup(dto);
-  }
-
-  @Public()
-  @Get('verify-email')
-  verifyEmail(@Query('token') token: string) {
-    return this.authService.verifyEmail(token);
-  }
-
-  @Public()
-  @Post('resend-verification')
-  resendVerification(@Body() dto: ResendVerificationDto) {
-    return this.authService.resendVerification(dto);
-  }
-
-  @Public()
-  @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
-  }
-
-  @Public()
-  @Get('google')
-  @UseGuards(GoogleAuthGuard)
-  googleAuth() {
-    // Passport redirects to Google
-  }
-
-  @Public()
-  @Get('google/callback')
-  @UseGuards(GoogleAuthGuard)
-  async googleCallback(
-    @Req() req: Request & { user?: GoogleProfile },
-    @Res() res: Response,
-  ) {
-    if (!this.authService.isGoogleAuthConfigured()) {
-      throw new UnauthorizedException('Google sign-in is not configured');
-    }
-
-    try {
-      if (!req.user) {
-        return res.redirect(
-          this.authService.buildGoogleErrorRedirect('Google sign-in failed'),
-        );
-      }
-      const result = await this.authService.googleLogin(req.user);
-      return res.redirect(
-        this.authService.buildGoogleCallbackRedirect(result.accessToken),
-      );
-    } catch {
-      return res.redirect(
-        this.authService.buildGoogleErrorRedirect('Google sign-in failed'),
-      );
-    }
-  }
 
   @ApiBearerAuth()
   @Get('me')

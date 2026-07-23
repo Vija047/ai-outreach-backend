@@ -12,7 +12,7 @@
 
 | Variable | Example / notes |
 |----------|-----------------|
-| `DATABASE_URL` | Neon Postgres URL (`?sslmode=require`) |
+| `DATABASE_URL` | Neon Postgres URL (`?sslmode=verify-full`) |
 | `REDIS_URL` | Upstash `rediss://default:…@….upstash.io:6379` |
 | `FRONTEND_URL` | `https://your-app.vercel.app` |
 | `CORS_ORIGINS` | Extra origins, comma-separated (optional) |

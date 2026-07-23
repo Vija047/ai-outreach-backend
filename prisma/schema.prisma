@@ -60,24 +60,13 @@ enum CreditReason {
   ADMIN_GRANT
 }
 
-enum AuthProvider {
-  EMAIL
-  GOOGLE
-}
-
 model User {
-  id                       String         @id @default(cuid())
-  name                     String
-  email                    String         @unique
-  passwordHash             String?
-  googleId                 String?        @unique
-  authProvider             AuthProvider   @default(EMAIL)
-  emailVerified            Boolean        @default(false)
-  verificationToken        String?        @unique
-  verificationTokenExpires DateTime?
-  plan                     Plan           @default(FREE)
-  createdAt                DateTime       @default(now())
-  updatedAt                DateTime       @updatedAt
+  id           String         @id
+  name         String
+  email        String         @unique
+  plan         Plan           @default(FREE)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   profile      SellerProfile?
   creditLedger CreditLedger[]
