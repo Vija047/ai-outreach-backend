@@ -31,4 +31,5 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 3001
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+CMD ["sh", "-c", "if [ -z \"$DATABASE_URL\" ]; then echo 'ERROR: DATABASE_URL environment variable is missing on Render!' && exit 1; fi && npx prisma migrate deploy && node dist/main.js"]
+
