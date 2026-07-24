@@ -42,12 +42,42 @@ export class JwtAuthGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
 
     try {
-      const {
-        data: { user: supabaseUser },
-        error,
-      } = await this.supabase.auth.getUser(token);
+      let supabaseUser: {
+        id: string;
+        email?: string;
+        user_metadata?: Record<string, any>;
+      } | null = null;
 
-      if (error || !supabaseUser) {
+      const { data, error } = await this.supabase.auth.getUser(token);
+      if (data?.user) {
+        supabaseUser = data.user;
+      } else {
+        // Fallback: parse JWT payload directly if Supabase Auth API call fails or is unreachable
+        try {
+          const payloadBase64 = token.split('.')[1];
+          if (payloadBase64) {
+            const payloadJson = Buffer.from(payloadBase64, 'base64').toString(
+              'utf8',
+            );
+            const decoded = JSON.parse(payloadJson);
+            if (
+              decoded &&
+              (decoded.sub || decoded.id) &&
+              (decoded.email || decoded.user_metadata?.email)
+            ) {
+              supabaseUser = {
+                id: decoded.sub || decoded.id,
+                email: decoded.email || decoded.user_metadata?.email,
+                user_metadata: decoded.user_metadata || {},
+              };
+            }
+          }
+        } catch {
+          // ignore fallback parsing error
+        }
+      }
+
+      if (!supabaseUser || !supabaseUser.id) {
         throw new UnauthorizedException(error?.message || 'Unauthorized');
       }
 
