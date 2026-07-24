@@ -60,19 +60,41 @@ enum CreditReason {
   ADMIN_GRANT
 }
 
+enum AuthTokenType {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
 model User {
-  id           String         @id
-  name         String
-  email        String         @unique
-  plan         Plan           @default(FREE)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  passwordHash  String?
+  emailVerified Boolean        @default(false)
+  avatarUrl     String?
+  plan          Plan           @default(FREE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   profile      SellerProfile?
   creditLedger CreditLedger[]
   analysisJobs AnalysisJob[]
   generations  Generation[]
   templates    Template[]
+  authTokens   AuthToken[]
+}
+
+model AuthToken {
+  id        String        @id @default(cuid())
+  userId    String
+  type      AuthTokenType
+  tokenHash String        @unique
+  expiresAt DateTime
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
 }
 
 model SellerProfile {

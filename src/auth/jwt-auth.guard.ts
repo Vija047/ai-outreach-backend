@@ -5,26 +5,22 @@ import {
   CanActivate,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
 import { IS_PUBLIC_KEY } from '../common/decorators/public.decorator';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users/users.service';
-import { AuthService } from './auth.service';
+
+interface JwtPayload {
+  sub: string;
+  email: string;
+}
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  private supabase: SupabaseClient;
-
   constructor(
     private readonly reflector: Reflector,
-    private readonly configService: ConfigService,
+    private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
-    private readonly authService: AuthService,
-  ) {
-    const url = this.configService.get<string>('app.supabaseUrl') ?? '';
-    const anonKey = this.configService.get<string>('app.supabaseAnonKey') ?? '';
-    this.supabase = createClient(url, anonKey);
-  }
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -42,69 +38,8 @@ export class JwtAuthGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
 
     try {
-      let supabaseUser: {
-        id: string;
-        email?: string;
-        user_metadata?: Record<string, any>;
-      } | null = null;
-
-      const { data, error } = await this.supabase.auth.getUser(token);
-      if (data?.user) {
-        supabaseUser = data.user;
-      } else {
-        // Fallback: parse JWT payload directly if Supabase Auth API call fails or is unreachable
-        try {
-          const payloadBase64 = token.split('.')[1];
-          if (payloadBase64) {
-            const payloadJson = Buffer.from(payloadBase64, 'base64').toString(
-              'utf8',
-            );
-            const decoded = JSON.parse(payloadJson);
-            if (
-              decoded &&
-              (decoded.sub || decoded.id) &&
-              (decoded.email || decoded.user_metadata?.email)
-            ) {
-              supabaseUser = {
-                id: decoded.sub || decoded.id,
-                email: decoded.email || decoded.user_metadata?.email,
-                user_metadata: decoded.user_metadata || {},
-              };
-            }
-          }
-        } catch {
-          // ignore fallback parsing error
-        }
-      }
-
-      if (!supabaseUser || !supabaseUser.id) {
-        throw new UnauthorizedException(error?.message || 'Unauthorized');
-      }
-
-      const email =
-        supabaseUser.email || supabaseUser.user_metadata?.email || '';
-      const name =
-        supabaseUser.user_metadata?.full_name ||
-        supabaseUser.user_metadata?.name ||
-        email.split('@')[0] ||
-        'User';
-
-      let user = await this.usersService.findById(supabaseUser.id);
-      if (!user && email) {
-        const existingByEmail = await this.usersService.findByEmail(
-          email.toLowerCase().trim(),
-        );
-        if (existingByEmail) {
-          user = existingByEmail;
-        } else {
-          user = await this.authService.createUserFromSupabase(
-            supabaseUser.id,
-            email,
-            name,
-          );
-        }
-      }
-
+      const payload = this.jwtService.verify<JwtPayload>(token);
+      const user = await this.usersService.findById(payload.sub);
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
@@ -113,8 +48,7 @@ export class JwtAuthGuard implements CanActivate {
       return true;
     } catch (err) {
       if (err instanceof UnauthorizedException) throw err;
-      console.error('JwtAuthGuard validation error:', err);
-      throw new UnauthorizedException('Invalid token or auth service error');
+      throw new UnauthorizedException('Invalid or expired token');
     }
   }
 }

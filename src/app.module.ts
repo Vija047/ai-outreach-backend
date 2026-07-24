@@ -24,6 +24,7 @@ import { JwtAuthGuard } from './auth/jwt-auth.guard';
       load: [appConfig],
       envFilePath: '.env',
     }),
+    AuthModule,
     PrismaModule,
     RedisModule,
     HealthModule,

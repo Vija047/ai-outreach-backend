@@ -39,15 +39,33 @@ async function bootstrap() {
   const frontendUrl =
     configService.get<string>('app.frontendUrl') ?? 'http://localhost:3000';
   const extraOrigins = configService.get<string[]>('app.corsOrigins') ?? [];
-  const origins = new Set<string>([frontendUrl, ...extraOrigins]);
-  if (!isProd) {
-    origins.add('http://localhost:3000');
-    origins.add('http://127.0.0.1:3000');
-  }
+  const configuredOrigins = new Set<string>([
+    frontendUrl.replace(/\/$/, ''),
+    ...extraOrigins.map((o) => o.replace(/\/$/, '')),
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+  ]);
+
+  const vercelRegex = /^https:\/\/.*\.vercel\.app$/;
 
   app.enableCors({
-    origin: [...origins],
+    origin: (requestOrigin, callback) => {
+      if (!requestOrigin) return callback(null, true);
+      const cleanOrigin = requestOrigin.replace(/\/$/, '');
+
+      if (
+        configuredOrigins.has(cleanOrigin) ||
+        vercelRegex.test(cleanOrigin) ||
+        cleanOrigin.includes('localhost') ||
+        cleanOrigin.includes('127.0.0.1')
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true);
+    },
     credentials: true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    allowedHeaders: 'Content-Type,Accept,Authorization,X-Requested-With',
   });
 
   app.setGlobalPrefix('api/v1');

@@ -1,5 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { AuthTokenType } from '@prisma/client';
+import { createHash } from 'crypto';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
@@ -73,13 +75,27 @@ describe('AI Outreach API (e2e)', () => {
     const prisma = app.get(PrismaService);
     const user = await prisma.user.findUnique({ where: { email: testEmail } });
     expect(user).toBeDefined();
-    expect(user.verificationToken).toBeDefined();
+
+    const rawToken = 'e2e-verify-token';
+    const tokenHash = createHash('sha256').update(rawToken).digest('hex');
+    await prisma.authToken.deleteMany({
+      where: { userId: user!.id, type: AuthTokenType.VERIFY_EMAIL },
+    });
+    await prisma.authToken.create({
+      data: {
+        userId: user!.id,
+        type: AuthTokenType.VERIFY_EMAIL,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 3600000),
+      },
+    });
 
     const res = await request(app.getHttpServer())
-      .get(`/api/v1/auth/verify-email?token=${user.verificationToken}`)
+      .get(`/api/v1/auth/verify-email?token=${rawToken}`)
       .expect(200);
 
     expect(res.body.message).toContain('Email verified successfully');
+    expect(res.body.accessToken).toBeDefined();
   });
 
   it('POST /api/v1/auth/login should succeed after verification', async () => {
@@ -89,7 +105,7 @@ describe('AI Outreach API (e2e)', () => {
         email: testEmail,
         password: 'password123',
       })
-      .expect(201);
+      .expect(200);
 
     expect(res.body.accessToken).toBeDefined();
     accessToken = res.body.accessToken;

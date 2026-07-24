@@ -61,7 +61,4 @@ export default registerAs('app', () => ({
     process.env.SMTP_SECURE === 'true' ||
     parseInt(process.env.SMTP_PORT ?? '587', 10) === 465,
   otpExpiryMinutes: parseInt(process.env.OTP_EXPIRY_MINUTES ?? '10', 10),
-  supabaseJwtSecret: process.env.SUPABASE_JWT_SECRET ?? '',
-  supabaseUrl: process.env.SUPABASE_URL ?? '',
-  supabaseAnonKey: process.env.SUPABASE_ANON_KEY ?? '',
 }));

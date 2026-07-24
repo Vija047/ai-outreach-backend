@@ -7,7 +7,9 @@ export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   findByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { email } });
+    return this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
   }
 
   findById(id: string): Promise<User | null> {
@@ -18,10 +20,15 @@ export class UsersService {
     id: string,
     data: { name?: string; email?: string },
   ): Promise<User> {
-    return this.prisma.user.update({ where: { id }, data });
+    const update: { name?: string; email?: string } = { ...data };
+    if (update.email) {
+      update.email = update.email.toLowerCase().trim();
+    }
+    return this.prisma.user.update({ where: { id }, data: update });
   }
 
   sanitizeUser(user: User) {
-    return user;
+    const { passwordHash: _, ...safe } = user;
+    return safe;
   }
 }

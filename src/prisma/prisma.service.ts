@@ -21,12 +21,22 @@ export class PrismaService
       throw new Error('DATABASE_URL is required');
     }
 
+    const isLocal =
+      connectionString.includes('localhost') ||
+      connectionString.includes('127.0.0.1');
+    const poolConnectionString = isLocal
+      ? connectionString
+      : connectionString
+          .replace(/([?&])sslmode=[^&]*/g, '')
+          .replace(/\?&/, '?')
+          .replace(/\?$/, '');
+
     const pool = new Pool({
-      connectionString,
-      // Neon / managed Postgres often need SSL; URL usually includes sslmode
+      connectionString: poolConnectionString,
       max: 10,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 15_000,
+      ssl: isLocal ? undefined : { rejectUnauthorized: false },
     });
     const adapter = new PrismaPg(pool);
     super({ adapter });

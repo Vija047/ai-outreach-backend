@@ -1,10 +1,14 @@
 /**
  * Live API test script for AI Outreach backend.
  * Usage: node scripts/test-live-flow.mjs
+ *
+ * Set BYPASS_EMAIL_VERIFICATION=true in backend .env for auto-login after register,
+ * or pass VERIFY_TOKEN=<raw token from email> to test the verify flow.
  */
 const BASE = process.env.API_BASE ?? 'http://localhost:3001/api/v1';
-const TEST_EMAIL = `test-${Date.now()}@outreach.test`;
-const TEST_PASSWORD = 'password123';
+const TEST_EMAIL = process.env.TEST_EMAIL ?? `test-${Date.now()}@outreach.test`;
+const TEST_PASSWORD = process.env.TEST_PASSWORD ?? 'password123';
+const VERIFY_TOKEN = process.env.VERIFY_TOKEN ?? '';
 const COMPANY_URL = 'https://talentpluto.com/';
 
 async function request(method, path, body, token) {
@@ -65,9 +69,35 @@ async function main() {
     password: TEST_PASSWORD,
   });
   log('Register', register);
-  if (!register.data?.accessToken) throw new Error('Register failed');
+  if (register.status >= 400) throw new Error('Register failed');
 
-  const token = register.data.accessToken;
+  let token = register.data?.accessToken;
+
+  if (!token && VERIFY_TOKEN) {
+    const verify = await request(
+      'GET',
+      `/auth/verify-email?token=${encodeURIComponent(VERIFY_TOKEN)}`,
+    );
+    log('Verify Email', verify);
+    if (verify.status >= 400) throw new Error('Email verification failed');
+
+    const login = await request('POST', '/auth/login', {
+      email: TEST_EMAIL,
+      password: TEST_PASSWORD,
+    });
+    log('Login', login);
+    token = login.data?.accessToken;
+  }
+
+  if (!token) {
+    throw new Error(
+      'No access token after register. Set BYPASS_EMAIL_VERIFICATION=true on backend, or VERIFY_TOKEN=<token from email>.',
+    );
+  }
+
+  const me = await request('GET', '/auth/me', null, token);
+  log('Get Me', me);
+  if (me.status !== 200) throw new Error('Get me failed');
 
   const profile = await request('PATCH', '/profile', {
     role: 'AI Full Stack Developer',

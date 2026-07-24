@@ -37,6 +37,7 @@ async function main() {
           name: TEST_USER.name,
           email: TEST_USER.email,
           passwordHash,
+          emailVerified: true,
           plan: Plan.FREE,
           profile: { create: {} },
         },
