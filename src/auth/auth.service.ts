@@ -24,25 +24,33 @@ export class AuthService {
     const signupCredits =
       this.configService.get<number>('app.signupCredits') ?? 20;
 
+    const normalizedEmail = email.toLowerCase().trim();
+
     return this.prisma.$transaction(async (tx) => {
-      const created = await tx.user.create({
-        data: {
-          id, // Use Supabase user UUID
+      const created = await tx.user.upsert({
+        where: { email: normalizedEmail },
+        update: { name: name.trim() },
+        create: {
+          id,
           name: name.trim(),
-          email: email.toLowerCase().trim(),
+          email: normalizedEmail,
           profile: { create: {} },
         },
       });
 
-      await tx.creditLedger.create({
-        data: {
-          userId: created.id,
-          delta: signupCredits,
-          reason: CreditReason.SIGNUP_BONUS,
-        },
-      });
+      try {
+        await tx.creditLedger.create({
+          data: {
+            userId: created.id,
+            delta: signupCredits,
+            reason: CreditReason.SIGNUP_BONUS,
+          },
+        });
+      } catch {
+        // Bonus already granted or ledger entry exists
+      }
 
-      this.logger.log(`Created JIT user in database: ${email} (${id})`);
+      this.logger.log(`Provisioned user in database: ${normalizedEmail} (${created.id})`);
       return created;
     });
   }

@@ -40,30 +40,51 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     const token = authHeader.split(' ')[1];
-    const { data: { user: supabaseUser }, error } = await this.supabase.auth.getUser(token);
 
-    if (error || !supabaseUser) {
-      throw new UnauthorizedException(error?.message || 'Unauthorized');
+    try {
+      const {
+        data: { user: supabaseUser },
+        error,
+      } = await this.supabase.auth.getUser(token);
+
+      if (error || !supabaseUser) {
+        throw new UnauthorizedException(error?.message || 'Unauthorized');
+      }
+
+      const email =
+        supabaseUser.email || supabaseUser.user_metadata?.email || '';
+      const name =
+        supabaseUser.user_metadata?.full_name ||
+        supabaseUser.user_metadata?.name ||
+        email.split('@')[0] ||
+        'User';
+
+      let user = await this.usersService.findById(supabaseUser.id);
+      if (!user && email) {
+        const existingByEmail = await this.usersService.findByEmail(
+          email.toLowerCase().trim(),
+        );
+        if (existingByEmail) {
+          user = existingByEmail;
+        } else {
+          user = await this.authService.createUserFromSupabase(
+            supabaseUser.id,
+            email,
+            name,
+          );
+        }
+      }
+
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      request.user = { id: user.id, email: user.email, plan: user.plan };
+      return true;
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
+      console.error('JwtAuthGuard validation error:', err);
+      throw new UnauthorizedException('Invalid token or auth service error');
     }
-
-    const email = supabaseUser.email || supabaseUser.user_metadata?.email || '';
-    const name =
-      supabaseUser.user_metadata?.full_name ||
-      supabaseUser.user_metadata?.name ||
-      email.split('@')[0] ||
-      'User';
-
-    let user = await this.usersService.findById(supabaseUser.id);
-    if (!user) {
-      // Just-in-time provisioning of Supabase Auth users in our database
-      user = await this.authService.createUserFromSupabase(
-        supabaseUser.id,
-        email,
-        name,
-      );
-    }
-
-    request.user = { id: user.id, email: user.email, plan: user.plan };
-    return true;
   }
 }
